@@ -25,7 +25,12 @@ KENO_CALLBACK_PREFIX = "nr:"
 KENO_NUMBERS = 40
 KENO_DRAW_COUNT = 10
 KENO_SETUP_TIMEOUT_SECONDS = 15 * 60
-KENO_MAX_PAYOUT_MULTIPLIER = 10_000.0
+# The top tier is intentionally capped at the multiplier shown to players.
+# A cap is also a bankroll-safety limit: the house edge is created by the
+# published RTP below, never by changing an already-generated draw.
+KENO_MAX_PAYOUT_MULTIPLIER = 1_000.0
+KENO_HOUSE_EDGE = 0.05
+KENO_TARGET_RTP = 1.0 - KENO_HOUSE_EDGE
 
 
 @dataclass(frozen=True)
@@ -43,7 +48,9 @@ class KenoMode:
 
 # The base multipliers are anchors, not a hardcoded payout table.  The actual
 # multiplier for each spot/hit pair is generated from the hypergeometric odds,
-# then normalized to the configured RTP for that mode.
+# then normalized to the configured RTP for that mode.  Every mode uses the
+# same published 5% long-run house edge; high-risk modes only change which hit
+# counts qualify and how sharply the payouts rise.
 KENO_CONFIG: dict[str, Any] = {
     "number_count": KENO_NUMBERS,
     "draw_count": KENO_DRAW_COUNT,
@@ -53,16 +60,16 @@ KENO_CONFIG: dict[str, Any] = {
     "maximum_payout_multiplier": KENO_MAX_PAYOUT_MULTIPLIER,
     "modes": {
         "classic": KenoMode(
-            "classic", "Classic", 3.00, 0.04, 0.50, 1.00, 0.96
+            "classic", "Classic", 3.00, KENO_HOUSE_EDGE, 0.50, 1.00, KENO_TARGET_RTP
         ),
         "easy": KenoMode(
-            "easy", "Easy", 1.10, 0.03, 0.20, 0.86, 0.97
+            "easy", "Easy", 1.10, KENO_HOUSE_EDGE, 0.20, 0.86, KENO_TARGET_RTP
         ),
         "medium": KenoMode(
-            "medium", "Medium", 1.60, 0.04, 0.35, 0.96, 0.96
+            "medium", "Medium", 1.60, KENO_HOUSE_EDGE, 0.35, 0.96, KENO_TARGET_RTP
         ),
         "hard": KenoMode(
-            "hard", "Hard", 4.00, 0.05, 0.70, 1.08, 0.95
+            "hard", "Hard", 4.00, KENO_HOUSE_EDGE, 0.60, 1.08, KENO_TARGET_RTP
         ),
     },
 }
@@ -202,20 +209,40 @@ def build_payout_table(spots: int, mode_key: str) -> dict[int, float]:
             max(0.0, fair_multiplier - 1.0) ** profile.odds_exponent
         )
 
-    expected_raw = sum(
-        hit_probability(spots, hits) * raw_values[hits] for hits in paid_hits
-    )
-    scale = profile.target_rtp / expected_raw if expected_raw > 0 else 0.0
     maximum = float(KENO_CONFIG["maximum_payout_multiplier"])
-    table = {0: 0.0}
-    for hits in range(1, spots + 1):
-        if hits not in raw_values:
-            table[hits] = 0.0
-            continue
-        table[hits] = round(
-            min(maximum, max(profile.base_multiplier, raw_values[hits] * scale)),
-            2,
+
+    def rounded_table(current_scale: float) -> dict[int, float]:
+        """Round/cap payouts without introducing a payout floor."""
+        return {
+            hits: (
+                round(min(maximum, max(0.0, raw_values[hits] * current_scale)), 2)
+                if hits in raw_values
+                else 0.0
+            )
+            for hits in range(0, spots + 1)
+        }
+
+    def expected_rtp(table_to_measure: dict[int, float]) -> float:
+        return sum(
+            hit_probability(spots, hits) * value
+            for hits, value in table_to_measure.items()
         )
+
+    # Solve for the largest deterministic scale whose rounded and capped
+    # schedule still stays at or below the target RTP.  A one-way scale-down
+    # is not sufficient here: adding the 1,000x cap can otherwise leave the
+    # house with a much larger edge than the mode advertises.
+    low = 0.0
+    high = 1.0
+    while expected_rtp(rounded_table(high)) < profile.target_rtp and high < 1e12:
+        high *= 2.0
+    for _ in range(80):
+        scale = (low + high) / 2.0
+        if expected_rtp(rounded_table(scale)) <= profile.target_rtp:
+            low = scale
+        else:
+            high = scale
+    table = rounded_table(low)
 
     # Rounding/capping can slightly change RTP, but never allows a negative
     # payout or a non-winning state to pay.
@@ -459,9 +486,11 @@ def _render_mode_picker(session: dict[str, Any]) -> tuple[str, InlineKeyboardMar
         "Win up to <b>1000x</b> multiplier.\n\n"
         "<blockquote>"
         f"<b>Mode:</b> {_mode_label(mode_key)}\n"
-        f"<b>Bet:</b> {service.format_balance(session['bet_amount'], currency)}"
+        f"<b>Bet:</b> {service.format_balance(session['bet_amount'], currency)}\n"
+        f"<b>House edge:</b> {_mode(mode_key).house_edge:.0%} long-run target"
         "</blockquote>\n"
-        "Choose a mode, then open the number board."
+        "Choose a mode, then open the number board. Every draw is random; the "
+        "house advantage is applied through the published payout schedule."
     )
     return text, InlineKeyboardMarkup(keyboard)
 

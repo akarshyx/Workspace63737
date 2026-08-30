@@ -30,15 +30,31 @@ class KenoMathTests(unittest.TestCase):
             self.assertTrue(
                 all(value <= keno_game.KENO_MAX_PAYOUT_MULTIPLIER for value in first.values())
             )
+            expected_rtp = sum(
+                keno_game.hit_probability(spots, hits) * multiplier
+                for hits, multiplier in first.items()
+            )
+            self.assertLessEqual(
+                expected_rtp,
+                keno_game.KENO_CONFIG["modes"][mode].target_rtp + 1e-12,
+            )
+            self.assertGreater(
+                expected_rtp,
+                keno_game.KENO_CONFIG["modes"][mode].target_rtp - 0.01,
+            )
             for hits, multiplier in first.items():
                 if multiplier > 0:
-                    self.assertGreaterEqual(
-                        multiplier,
-                        keno_game.KENO_CONFIG["modes"][mode].base_multiplier,
-                    )
                     self.assertGreater(
                         keno_game.hit_probability(spots, hits), 0
                     )
+
+    def test_top_payout_is_capped_at_1000x(self):
+        self.assertEqual(keno_game.KENO_MAX_PAYOUT_MULTIPLIER, 1_000.0)
+        for mode in keno_game.KENO_CONFIG["modes"]:
+            self.assertLessEqual(
+                max(keno_game.build_payout_table(10, mode).values()),
+                1_000.0,
+            )
 
     def test_invalid_payout_inputs_do_not_pay(self):
         self.assertEqual(keno_game.payout_multiplier(0, 0, "medium"), 0.0)
