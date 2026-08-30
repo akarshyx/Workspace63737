@@ -354,8 +354,16 @@ def recover_incomplete_sessions() -> int:
 
 
 def _active_session_for_user(user_id: str) -> tuple[str, dict[str, Any]] | None:
+    now = time.time()
     with _sessions_lock:
-        for session_id, session in _sessions.items():
+        for session_id, session in list(_sessions.items()):
+            if (
+                session.get("status") == "setup"
+                and now - float(session.get("created_at", 0) or 0)
+                > KENO_SETUP_TIMEOUT_SECONDS
+            ):
+                del _sessions[session_id]
+                continue
             if (
                 str(session.get("user_id")) == str(user_id)
                 and session.get("status") in {"setup", "betting", "revealing", "settling"}
@@ -396,6 +404,14 @@ def _new_session(user_id: str, chat_id: int, bet_amount: float) -> tuple[str, di
 def _get_owned_session(session_id: str, user_id: str) -> dict[str, Any] | None:
     with _sessions_lock:
         session = _sessions.get(session_id)
+        if (
+            session
+            and session.get("status") == "setup"
+            and time.time() - float(session.get("created_at", 0) or 0)
+            > KENO_SETUP_TIMEOUT_SECONDS
+        ):
+            _sessions.pop(session_id, None)
+            session = None
         if session and str(session.get("user_id")) == str(user_id):
             return session
     return None
@@ -564,27 +580,24 @@ def _render_result(session: dict[str, Any]) -> tuple[str, InlineKeyboardMarkup]:
     balance = float(service.get_balance(user_id))
     session_id = session["session_id"]
     outcome_label = "WIN" if payout > 0 else "NO WIN"
-    board = _render_number_grid(session)
-    board.extend(
+    actions = [
         [
-            [
-                InlineKeyboardButton(
-                    "Play Again",
-                    callback_data=f"{KENO_CALLBACK_PREFIX}change_mode:{session_id}",
-                ),
-                InlineKeyboardButton(
-                    "Double",
-                    callback_data=f"{KENO_CALLBACK_PREFIX}double_again:{session_id}",
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    "Back",
-                    callback_data=f"{KENO_CALLBACK_PREFIX}back:{session_id}",
-                )
-            ],
-        ]
-    )
+            InlineKeyboardButton(
+                "Play Again",
+                callback_data=f"{KENO_CALLBACK_PREFIX}change_mode:{session_id}",
+            ),
+            InlineKeyboardButton(
+                "Double",
+                callback_data=f"{KENO_CALLBACK_PREFIX}double_again:{session_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "Back",
+                callback_data=f"{KENO_CALLBACK_PREFIX}back:{session_id}",
+            )
+        ],
+    ]
     return (
         "🎯 <b>KENO</b>\n\n"
         f"<b>OUTCOME ({_mode_label(session['mode']).upper()})</b>\n"
@@ -596,7 +609,7 @@ def _render_result(session: dict[str, Any]) -> tuple[str, InlineKeyboardMarkup]:
         f"<b>Balance:</b> {service.format_balance(balance, currency)}"
         "</blockquote>\n"
         f"<b>{outcome_label}</b> — choose an action below.",
-        InlineKeyboardMarkup(board),
+        InlineKeyboardMarkup(actions),
     )
 
 
@@ -899,32 +912,17 @@ async def _settle_session(context: ContextTypes.DEFAULT_TYPE, session_id: str) -
 
     try:
         text, markup = _render_result(session)
-        await context.bot.edit_message_text(
+        await context.bot.send_message(
             chat_id=session["chat_id"],
             text=text,
             reply_markup=markup,
-            message_id=session["message_id"],
             parse_mode=ParseMode.HTML,
         )
         service.save()
     except Exception as exc:
-        # A stale/deleted Telegram message should not lose the settlement.  The
-        # normal path edits the board in place; this fallback only creates a
-        # replacement result if Telegram rejects that edit.
-        service.logger.warning("[KENO] Could not update result board for %s: %s", session_id, exc)
-        try:
-            result_message = await context.bot.send_message(
-                chat_id=session["chat_id"],
-                text=text,
-                reply_markup=markup,
-                parse_mode=ParseMode.HTML,
-            )
-            with _sessions_lock:
-                session["message_id"] = result_message.message_id
-                session["result_message_id"] = result_message.message_id
-            service.save()
-        except Exception:
-            service.logger.exception("[KENO] Could not send fallback result for %s", session_id)
+        # The animated board has already finished; settlement must remain
+        # recorded even if Telegram temporarily rejects the outcome message.
+        service.logger.exception("[KENO] Could not send outcome for %s: %s", session_id, exc)
 
 
 async def keno_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

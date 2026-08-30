@@ -108,9 +108,15 @@ class KenoMathTests(unittest.TestCase):
             self.assertIn("Play Again", labels)
             self.assertIn("Double", labels)
             self.assertIn("Back", labels)
-            self.assertIn("7", labels)
+            self.assertNotIn("7", labels)
         finally:
             keno_game._services = original
+
+    def test_expired_setup_round_does_not_block_new_keno_command(self):
+        session_id, session = keno_game._new_session("123456", 77, 5.0)
+        session["created_at"] = 1.0
+        self.assertIsNone(keno_game._active_session_for_user("123456"))
+        self.assertIsNone(keno_game._get_owned_session(session_id, "123456"))
 
     def test_invalid_payout_inputs_do_not_pay(self):
         self.assertEqual(keno_game.payout_multiplier(0, 0, "medium"), 0.0)
