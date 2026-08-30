@@ -562,9 +562,35 @@ def _render_board(session: dict[str, Any]) -> tuple[str, InlineKeyboardMarkup]:
     return text, InlineKeyboardMarkup(grid)
 
 
-def _render_draw_board(session: dict[str, Any]) -> InlineKeyboardMarkup:
-    """Render only the number board during the reveal, with no caption."""
-    return InlineKeyboardMarkup(_render_number_grid(session))
+def _render_draw_board(session: dict[str, Any]) -> tuple[str, InlineKeyboardMarkup]:
+    """Keep the full board and controls visible while the draw is animated."""
+    service = _svc()
+    user_id = str(session["user_id"])
+    currency = service.get_currency(user_id)
+    revealed_count = len(session.get("revealed_numbers", []))
+    draw_count = int(KENO_CONFIG["draw_count"])
+    text = (
+        "🎯 <b>KENO</b>\n\n"
+        "<blockquote>"
+        f"<b>Mode:</b> {session['mode'].title()}\n"
+        f"<b>Bet:</b> {service.format_balance(session['bet_amount'], currency)}\n"
+        f"<b>Selected:</b> {len(session.get('selected_numbers', []))}/10"
+        "</blockquote>\n"
+        f"🎲 <b>Drawing numbers: {revealed_count}/{draw_count}</b>"
+    )
+    grid = _render_number_grid(session)
+    disabled_callback = f"{KENO_CALLBACK_PREFIX}noop:{session['session_id']}"
+    grid.extend(
+        [
+            [
+                InlineKeyboardButton("Random Pick", callback_data=disabled_callback),
+                InlineKeyboardButton("Clear Table", callback_data=disabled_callback),
+            ],
+            [InlineKeyboardButton("Bet", callback_data=disabled_callback)],
+            [InlineKeyboardButton("Back", callback_data=disabled_callback)],
+        ]
+    )
+    return text, InlineKeyboardMarkup(grid)
 
 
 def _render_result(session: dict[str, Any]) -> tuple[str, InlineKeyboardMarkup]:
@@ -580,24 +606,27 @@ def _render_result(session: dict[str, Any]) -> tuple[str, InlineKeyboardMarkup]:
     balance = float(service.get_balance(user_id))
     session_id = session["session_id"]
     outcome_label = "WIN" if payout > 0 else "NO WIN"
-    actions = [
+    board = _render_number_grid(session)
+    board.extend(
         [
-            InlineKeyboardButton(
-                "Play Again",
-                callback_data=f"{KENO_CALLBACK_PREFIX}change_mode:{session_id}",
-            ),
-            InlineKeyboardButton(
-                "Double",
-                callback_data=f"{KENO_CALLBACK_PREFIX}double_again:{session_id}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                "Back",
-                callback_data=f"{KENO_CALLBACK_PREFIX}back:{session_id}",
-            )
-        ],
-    ]
+            [
+                InlineKeyboardButton(
+                    "Play Again",
+                    callback_data=f"{KENO_CALLBACK_PREFIX}change_mode:{session_id}",
+                ),
+                InlineKeyboardButton(
+                    "Double",
+                    callback_data=f"{KENO_CALLBACK_PREFIX}double_again:{session_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    "Back",
+                    callback_data=f"{KENO_CALLBACK_PREFIX}back:{session_id}",
+                )
+            ],
+        ]
+    )
     return (
         "🎯 <b>KENO</b>\n\n"
         f"<b>OUTCOME ({_mode_label(session['mode']).upper()})</b>\n"
@@ -609,7 +638,7 @@ def _render_result(session: dict[str, Any]) -> tuple[str, InlineKeyboardMarkup]:
         f"<b>Balance:</b> {service.format_balance(balance, currency)}"
         "</blockquote>\n"
         f"<b>{outcome_label}</b> — choose an action below.",
-        InlineKeyboardMarkup(actions),
+        InlineKeyboardMarkup(board),
     )
 
 
@@ -819,7 +848,8 @@ async def _place_bet(query, context: ContextTypes.DEFAULT_TYPE, session: dict[st
         return
 
     await _answer(query)
-    await _edit(query, "\u200b", _render_draw_board(session))
+    reveal_text, reveal_markup = _render_draw_board(session)
+    await _edit(query, reveal_text, reveal_markup)
     task = asyncio.create_task(_reveal_session(context, session["session_id"]))
     _reveal_tasks[session["session_id"]] = task
 
@@ -851,11 +881,13 @@ async def _reveal_session(context: ContextTypes.DEFAULT_TYPE, session_id: str) -
                 chat_id = session["chat_id"]
                 message_id = session["message_id"]
             try:
+                reveal_text, reveal_markup = _render_draw_board(session)
                 await context.bot.edit_message_text(
                     chat_id=chat_id,
                     message_id=message_id,
-                    text="\u200b",
-                    reply_markup=_render_draw_board(session),
+                    text=reveal_text,
+                    reply_markup=reveal_markup,
+                    parse_mode=ParseMode.HTML,
                 )
             except Exception as exc:
                 service.logger.warning("[KENO] Reveal update failed for %s: %s", session_id, exc)
@@ -912,17 +944,18 @@ async def _settle_session(context: ContextTypes.DEFAULT_TYPE, session_id: str) -
 
     try:
         text, markup = _render_result(session)
-        await context.bot.send_message(
+        await context.bot.edit_message_text(
             chat_id=session["chat_id"],
             text=text,
             reply_markup=markup,
+            message_id=session["message_id"],
             parse_mode=ParseMode.HTML,
         )
         service.save()
     except Exception as exc:
         # The animated board has already finished; settlement must remain
-        # recorded even if Telegram temporarily rejects the outcome message.
-        service.logger.exception("[KENO] Could not send outcome for %s: %s", session_id, exc)
+        # recorded even if Telegram temporarily rejects the final edit.
+        service.logger.exception("[KENO] Could not update outcome board for %s: %s", session_id, exc)
 
 
 async def keno_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

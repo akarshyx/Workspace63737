@@ -108,7 +108,40 @@ class KenoMathTests(unittest.TestCase):
             self.assertIn("Play Again", labels)
             self.assertIn("Double", labels)
             self.assertIn("Back", labels)
-            self.assertNotIn("7", labels)
+            self.assertIn("7", labels)
+        finally:
+            keno_game._services = original
+
+    def test_reveal_board_keeps_caption_and_setup_controls(self):
+        class FakeServices:
+            @staticmethod
+            def get_currency(user_id):
+                return "USD"
+
+            @staticmethod
+            def format_balance(amount, currency):
+                return f"${amount:.2f}"
+
+        original = keno_game._services
+        try:
+            keno_game.configure(FakeServices())
+            session = {
+                "session_id": "reveal-test",
+                "user_id": "123456",
+                "mode": "medium",
+                "bet_amount": 2.0,
+                "selected_numbers": list(range(1, 11)),
+                "revealed_numbers": [33],
+                "hit_numbers": [],
+                "status": "revealing",
+            }
+            text, markup = keno_game._render_draw_board(session)
+            self.assertIn("Drawing numbers: 1/10", text)
+            labels = [button.text for row in markup.inline_keyboard for button in row]
+            self.assertIn("Random Pick", labels)
+            self.assertIn("Clear Table", labels)
+            self.assertIn("Bet", labels)
+            self.assertIn("Back", labels)
         finally:
             keno_game._services = original
 
