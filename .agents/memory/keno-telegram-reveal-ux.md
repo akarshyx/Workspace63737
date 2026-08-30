@@ -3,8 +3,8 @@ name: Keno Telegram reveal UX
 description: The expected Telegram Keno interaction and the stale-board behavior to preserve.
 ---
 
-Keno's Telegram board uses Bot API button styles: primary for selected numbers, danger for revealed misses, and success for revealed hits. The reveal must keep the caption and control rows, edit the same board after each draw in sequence, and finish by replacing that same message's caption and controls with the outcome. Setup boards expire after the configured timeout so old boards cannot block a new `/keno` command.
+Keno's Telegram board uses Bot API button styles: primary for selected numbers, danger for revealed misses, and success for revealed hits. After Bet, the caption and setup controls disappear while only the grid is edited after each draw in sequence; the same message then returns with the outcome caption and action buttons. Setup boards expire after the configured timeout so old boards cannot block a new `/keno` command.
 
-**Why:** The intended experience is an animated one-by-one draw like the supplied reference screenshots; rendering all final states at once, removing the board during the draw, or retaining stale setup sessions makes the game look broken and produces confusing ownership alerts.
+**Why:** The intended experience is an animated one-by-one draw like the supplied reference screenshots; rendering all final states at once, changing the requested reveal layout, or retaining stale setup sessions makes the game look broken and produces confusing ownership alerts.
 
-**How to apply:** Keep the in-progress board visible throughout the reveal, disable its setup actions without removing their rows, and edit the board in place for the final outcome and action buttons. Do not replace button styles with emoji markers, and always clean up expired setup sessions before rejecting a new game.
+**How to apply:** On Bet, edit to a zero-width caption with only the styled number grid; await the configured delay between each draw update; then edit that same message with the final caption, colored board, and Play Again / Double / Back actions. Do not replace button styles with emoji markers, and always clean up expired setup sessions before rejecting a new game.
