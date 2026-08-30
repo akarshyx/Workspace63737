@@ -32,6 +32,10 @@ KENO_SETUP_TIMEOUT_SECONDS = 15 * 60
 KENO_MAX_PAYOUT_MULTIPLIER = 1_000.0
 KENO_HOUSE_EDGE = 0.05
 KENO_TARGET_RTP = 1.0 - KENO_HOUSE_EDGE
+# Telegram rejects a zero-width space as an empty message when editing text.
+# WORD JOINER remains visually invisible while satisfying the non-empty text
+# requirement during the number-by-number reveal.
+KENO_REVEAL_TEXT = "\u2060"
 
 
 @dataclass(frozen=True)
@@ -819,7 +823,7 @@ async def _place_bet(query, context: ContextTypes.DEFAULT_TYPE, session: dict[st
         return
 
     await _answer(query)
-    await _edit(query, "\u200b", _render_draw_board(session))
+    await _edit(query, KENO_REVEAL_TEXT, _render_draw_board(session))
     task = asyncio.create_task(_reveal_session(context, session["session_id"]))
     _reveal_tasks[session["session_id"]] = task
 
@@ -854,7 +858,7 @@ async def _reveal_session(context: ContextTypes.DEFAULT_TYPE, session_id: str) -
                 await context.bot.edit_message_text(
                     chat_id=chat_id,
                     message_id=message_id,
-                    text="\u200b",
+                    text=KENO_REVEAL_TEXT,
                     reply_markup=_render_draw_board(session),
                 )
             except Exception as exc:

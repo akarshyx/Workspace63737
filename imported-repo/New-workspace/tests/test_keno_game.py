@@ -132,6 +132,8 @@ class KenoMathTests(unittest.TestCase):
             .to_dict()["style"],
             "danger",
         )
+        self.assertTrue(keno_game.KENO_REVEAL_TEXT)
+        self.assertNotEqual(keno_game.KENO_REVEAL_TEXT.strip(), "")
 
     def test_expired_setup_round_does_not_block_new_keno_command(self):
         session_id, session = keno_game._new_session("123456", 77, 5.0)
