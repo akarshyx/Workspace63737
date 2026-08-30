@@ -504,14 +504,11 @@ def _render_mode_picker(session: dict[str, Any]) -> tuple[str, InlineKeyboardMar
     ]
     text = (
         "🎯 <b>KENO</b>\n\n"
-        "Win up to <b>1000x</b> multiplier.\n\n"
         "<blockquote>"
         f"<b>Mode:</b> {_mode_label(mode_key)}\n"
-        f"<b>Bet:</b> {service.format_balance(session['bet_amount'], currency)}\n"
-        f"<b>House edge:</b> {_mode(mode_key).house_edge:.0%} long-run target"
+        f"<b>Bet:</b> {service.format_balance(session['bet_amount'], currency)}"
         "</blockquote>\n"
-        "Choose a mode, then open the number board. Every draw is random; the "
-        "house advantage is applied through the published payout schedule."
+        "Choose a mode."
     )
     return text, InlineKeyboardMarkup(keyboard)
 
@@ -530,7 +527,7 @@ def _render_board(session: dict[str, Any]) -> tuple[str, InlineKeyboardMarkup]:
         f"<b>Bet:</b> {service.format_balance(session['bet_amount'], currency)}\n"
         f"<b>Selected:</b> {spots}/10"
         "</blockquote>\n"
-        "Select exactly 10 numbers, then place your bet."
+        "Select exactly 10 numbers."
     )
     grid = _render_number_grid(session)
     grid.extend(
@@ -611,7 +608,7 @@ def _render_result(session: dict[str, Any]) -> tuple[str, InlineKeyboardMarkup]:
         f"<b>Won:</b> {service.format_balance(payout, currency)}\n"
         f"<b>Balance:</b> {service.format_balance(balance, currency)}"
         "</blockquote>\n"
-        f"<b>{outcome_label}</b> — choose an action below.",
+        f"<b>{outcome_label}</b>",
         InlineKeyboardMarkup(board),
     )
 
