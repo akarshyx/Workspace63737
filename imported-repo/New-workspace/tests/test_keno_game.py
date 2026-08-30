@@ -56,6 +56,62 @@ class KenoMathTests(unittest.TestCase):
                 1_000.0,
             )
 
+    def test_number_buttons_use_blue_red_and_green_telegram_styles(self):
+        session = {
+            "session_id": "state-test",
+            "selected_numbers": [7],
+            "revealed_numbers": [],
+            "hit_numbers": [],
+            "status": "setup",
+        }
+        self.assertEqual(keno_game._number_button(7, session).to_dict()["style"], "primary")
+
+        session.update({"revealed_numbers": [7], "status": "revealing"})
+        self.assertEqual(keno_game._number_button(7, session).to_dict()["style"], "danger")
+
+        session.update({"hit_numbers": [7]})
+        self.assertEqual(keno_game._number_button(7, session).to_dict()["style"], "success")
+
+    def test_result_keeps_revealed_board_and_action_buttons(self):
+        class FakeServices:
+            @staticmethod
+            def get_currency(user_id):
+                return "USD"
+
+            @staticmethod
+            def format_balance(amount, currency):
+                return f"${amount:.2f}"
+
+            @staticmethod
+            def get_balance(user_id):
+                return 18.0
+
+        original = keno_game._services
+        try:
+            keno_game.configure(FakeServices())
+            session = {
+                "session_id": "result-test",
+                "user_id": "123456",
+                "mode": "easy",
+                "bet_amount": 2.0,
+                "selected_numbers": [7, 8],
+                "revealed_numbers": [7, 8, 9],
+                "hit_numbers": [7],
+                "final_payout": 2.2,
+                "current_multiplier": 1.1,
+                "status": "finished",
+            }
+            text, markup = keno_game._render_result(session)
+            self.assertIn("OUTCOME (EASY)", text)
+            self.assertIn("Hits:</b> 1/2", text)
+            labels = [button.text for row in markup.inline_keyboard for button in row]
+            self.assertIn("Play Again", labels)
+            self.assertIn("Double", labels)
+            self.assertIn("Back", labels)
+            self.assertIn("7", labels)
+        finally:
+            keno_game._services = original
+
     def test_invalid_payout_inputs_do_not_pay(self):
         self.assertEqual(keno_game.payout_multiplier(0, 0, "medium"), 0.0)
         self.assertEqual(keno_game.payout_multiplier(9, 9, "medium"), 0.0)
