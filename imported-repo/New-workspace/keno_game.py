@@ -31,6 +31,7 @@ KENO_SETUP_TIMEOUT_SECONDS = 15 * 60
 KENO_MAX_PAYOUT_MULTIPLIER = 1_000.0
 KENO_HOUSE_EDGE = 0.05
 KENO_TARGET_RTP = 1.0 - KENO_HOUSE_EDGE
+KENO_SELECTED_MARKER = "🔵"
 
 
 @dataclass(frozen=True)
@@ -431,7 +432,10 @@ def _number_button(number: int, session: dict[str, Any]):
         label = f"× {number}"
         callback = f"{KENO_CALLBACK_PREFIX}noop:{session_id}"
     elif selected:
-        label = f"• {number}"
+        # Telegram does not expose button background-color controls.  The blue
+        # marker makes the selected state unmistakable while preserving the
+        # original number and callback behavior.
+        label = f"{KENO_SELECTED_MARKER} {number}"
     elif session.get("status") != "setup":
         label = str(number)
         callback = f"{KENO_CALLBACK_PREFIX}noop:{session_id}"
