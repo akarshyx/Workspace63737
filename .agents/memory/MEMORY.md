@@ -1,1 +1,2 @@
 - [Persistent project handoff](persistent-project-handoff.md) — after moving a conversation into a project, restore the preserved tree before rebuilding workflows.
+- [Keno payout policy](keno-payout-policy.md) — keep draws random; create house profit through published RTP and payout caps, never forced individual losses.
