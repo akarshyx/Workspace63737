@@ -1,0 +1,1 @@
+- [Persistent project handoff](persistent-project-handoff.md) — after moving a conversation into a project, restore the preserved tree before rebuilding workflows.

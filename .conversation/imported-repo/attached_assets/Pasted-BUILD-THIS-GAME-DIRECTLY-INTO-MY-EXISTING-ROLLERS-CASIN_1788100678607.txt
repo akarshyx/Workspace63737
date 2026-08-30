@@ -1,0 +1,920 @@
+BUILD THIS GAME DIRECTLY INTO MY EXISTING ROLLERS CASINO TELEGRAM BOT.
+
+IMPORTANT:
+Do NOT create a separate project.
+Do NOT replace my existing casino.
+Do NOT create a Telegram Mini App/Web App.
+Do NOT open a browser.
+The entire game must work inside Telegram using native Telegram bot messages, inline keyboards and callback queries.
+
+FIRST:
+Before changing anything, inspect the entire existing project and understand:
+1. Current Telegram bot framework/library.
+2. Current /start and menu system.
+3. Current wallet/balance system.
+4. Current deposit/withdraw system.
+5. Current betting system.
+6. Current Mines game if one exists.
+7. Current RNG/random-number system.
+8. Current multiplier/payout calculation.
+9. Current database/storage system.
+10. Existing admin/configuration system.
+11. Existing button-building helpers.
+12. Existing error handling and logging.
+
+DO NOT duplicate existing wallet, database, RNG or payout systems if they already exist. Reuse them.
+
+==================================================
+GAME NAME
+==================================================
+
+Create a new Telegram casino game called:
+
+NUMBER RUSH
+
+The game is based on the number-selection game shown in the attached screenshots.
+
+The game must run completely inside Telegram.
+
+==================================================
+MAIN GAME
+==================================================
+
+Display a grid containing numbers:
+
+1 through 40
+
+The grid should be displayed using Telegram inline keyboard buttons.
+
+Layout:
+
+1  2  3  4  5  6  7  8
+9  10 11 12 13 14 15 16
+17 18 19 20 21 22 23 24
+25 26 27 28 29 30 31 32
+33 34 35 36 37 38 39 40
+
+The exact number of columns can be adjusted if required by Telegram's button/message limitations, but keep the grid visually close to the screenshot.
+
+==================================================
+BUTTON STATES
+==================================================
+
+Use Telegram's native button styles supported by the project's Telegram library.
+
+DEFAULT:
+Unselected number = normal/secondary button.
+
+SELECTED:
+When a player taps a number, that number becomes BLUE/PRIMARY.
+
+HIT:
+When the game reveals a number that the player selected, that number becomes GREEN/SUCCESS.
+
+MISSED/REVEALED:
+When the game reveals a number that the player did not select, it becomes RED/DANGER.
+
+Do not fake colors using emojis if the Telegram Bot API/library supports actual button styles.
+
+If the installed Telegram library does not support the newest button-style fields, upgrade the compatible Telegram dependency or implement the supported Bot API method correctly without breaking the rest of the bot.
+
+==================================================
+PLAYER SELECTION
+==================================================
+
+Each player can select:
+
+MINIMUM: 1 number
+MAXIMUM: 10 numbers
+
+When a player taps a number:
+- Add it to their personal selection.
+- Turn that button blue.
+- Update the game message.
+- Do NOT affect any other player's selection.
+
+When they tap a selected number again:
+- Remove it from their selection.
+- Return it to the default state.
+
+Display:
+
+Selected: X/10
+
+Do not allow more than 10 numbers.
+
+If they press Bet with zero selected numbers, show an error:
+
+"❌ Select at least 1 number before betting."
+
+==================================================
+BET AMOUNT
+==================================================
+
+Use the EXISTING casino balance/wallet system.
+
+Do not create another balance.
+
+Use the same currency system already used by the casino.
+
+The game should have a Bet Amount section.
+
+The player should be able to enter/select their bet using the existing casino betting/input system if one exists.
+
+Add useful controls such as:
+
+1/2
+2x
+
+and/or reuse the existing bet amount controls from the casino if available.
+
+Validate:
+- User exists.
+- User has sufficient balance.
+- Bet amount is valid.
+- Bet amount is above the configured minimum.
+- Bet amount is below the configured maximum.
+
+When Bet is pressed:
+1. Validate the selection.
+2. Validate the bet amount.
+3. Atomically deduct/lock the bet from the user's balance.
+4. Lock the player's selected numbers.
+5. Prevent further selection changes.
+6. Generate the game outcome server-side.
+7. Store the complete game state.
+8. Start the reveal sequence.
+
+NEVER deduct the bet twice if Telegram sends duplicate callbacks.
+
+==================================================
+4 DIFFICULTY MODES
+==================================================
+
+Create four game modes:
+
+1. CLASSIC
+2. EASY
+3. MEDIUM
+4. HARD
+
+Add a difficulty selector to the game.
+
+The difficulty must be stored as part of the game session.
+
+Use these initial base multiplier configurations:
+
+EASY:
+Base multiplier = 1.10x
+
+MEDIUM:
+Base multiplier = 1.60x
+
+HARD:
+Base multiplier = 4.00x
+
+CLASSIC:
+Base multiplier = 3.00x
+
+MAKE THESE VALUES CONFIGURABLE.
+
+Do not scatter these values throughout the code.
+
+Create one central configuration such as:
+
+NUMBER_RUSH_CONFIG
+
+with:
+
+difficulty
+base_multiplier
+house_edge
+minimum_bet
+maximum_bet
+minimum_selection
+maximum_selection
+reveal_speed
+payout_parameters
+
+I must be able to change the configuration later without rewriting the game.
+
+==================================================
+IMPORTANT MULTIPLIER/PAYOUT SYSTEM
+==================================================
+
+Do NOT simply give the player a random multiplier.
+
+The multiplier must be based on the actual mathematical probability of the result.
+
+The multiplier should consider:
+
+1. Difficulty.
+2. Number of numbers selected.
+3. Number of successful hits.
+4. Number of numbers already revealed.
+5. Number of remaining numbers.
+6. Probability of achieving the current result.
+7. Configured house edge.
+8. Configured base multiplier.
+
+The rarer the successful result, the higher the multiplier should become.
+
+Example concept:
+
+A player selecting fewer numbers should generally have a different probability profile from someone selecting many numbers.
+
+If a player selects 1 number and that number is hit, the payout should be calculated from the probability of that event.
+
+If a player selects 5 numbers and several of those numbers are hit, calculate the payout from the actual probability of that event.
+
+Do NOT use fake/random multipliers.
+
+Do NOT change the multiplier simply to make the casino win.
+
+Do NOT change the already-generated result after the bet.
+
+The result must be determined fairly before the reveal animation starts.
+
+==================================================
+MINES-STYLE MATHEMATICAL BEHAVIOR
+==================================================
+
+The multiplier should behave similarly to a properly designed Mines/casino probability system:
+
+- Higher-risk outcomes = higher potential multiplier.
+- Lower-risk outcomes = lower multiplier.
+- House edge is configurable.
+- The multiplier must be reproducible from the game's mathematical parameters.
+- Avoid hardcoded multipliers for every possible combination unless they are generated from a mathematically defined payout table.
+
+If the existing Rollers Casino Mines game already contains a tested multiplier/payout formula, inspect it carefully.
+
+REUSE OR ADAPT THE EXISTING MATHEMATICAL PAYOUT ENGINE where appropriate instead of creating an unrelated formula.
+
+If the existing Mines game has a payout table, use its structure as the basis for Number Rush while correctly accounting for the different 40-number game mechanics.
+
+DO NOT copy proprietary code from another casino.
+
+Only reproduce the mathematical concept using our own implementation.
+
+==================================================
+FAIR RNG
+==================================================
+
+The game outcome MUST be generated server-side.
+
+Use a cryptographically secure/random source appropriate for a casino game if the existing project supports one.
+
+DO NOT use client-side JavaScript.
+DO NOT use the user's device time.
+DO NOT trust callback data for the outcome.
+DO NOT generate the result from the player's Telegram message.
+
+Once Bet is confirmed:
+
+1. Generate the complete outcome.
+2. Store it.
+3. Reveal it gradually.
+
+The reveal animation must NEVER change the already-generated result.
+
+For example:
+
+Outcome:
+[17, 4, 32, 8, 21, ...]
+
+The bot reveals:
+
+17 → 4 → 32 → 8 → 21 → ...
+
+The sequence remains fixed.
+
+==================================================
+GAME REVEAL
+==================================================
+
+After Bet:
+
+Edit the existing Telegram message rather than sending dozens of new messages.
+
+The bot should reveal numbers sequentially.
+
+Example:
+
+Number 17 → RED
+
+Then:
+
+Number 4 → RED
+
+Then:
+
+Number 32 → GREEN because player selected 32
+
+Then:
+
+Number 8 → RED
+
+etc.
+
+The reveal speed should be configurable.
+
+For example:
+
+REVEAL_DELAY = configurable milliseconds/seconds.
+
+Do not flood Telegram with messages.
+
+Use Telegram message editing efficiently and respect Telegram API rate limits.
+
+==================================================
+LIVE GAME INFORMATION
+==================================================
+
+During the game show something similar to:
+
+🎯 NUMBER RUSH
+
+Difficulty: HARD
+
+💰 Bet: $10.00
+
+🎯 Selected: 3/10
+💚 Hits: 1/3
+
+Multiplier: 4.35x
+Potential Win: $43.50
+
+Numbers are being revealed...
+
+The exact formatting can match the existing Rollers Casino design.
+
+==================================================
+WIN CONDITION
+==================================================
+
+When a selected number is revealed:
+
+- Turn that number GREEN.
+- Increase hit count.
+- Recalculate the multiplier.
+- Update the game information.
+
+When the relevant winning condition is reached, calculate the payout.
+
+Payout:
+
+bet × final_multiplier
+
+Example:
+
+Bet = $10
+Multiplier = 4.35x
+
+Win = $43.50
+
+Use the existing casino currency formatting and precision rules.
+
+==================================================
+LOSS CONDITION
+==================================================
+
+If the game reaches its losing condition, display:
+
+❌ YOU LOST
+
+Bet: $10.00
+
+Multiplier: 0.00x
+
+The bet remains lost.
+
+Do not return the bet unless the configured game rules explicitly say so.
+
+==================================================
+WIN SCREEN
+==================================================
+
+When the player wins, show something like:
+
+🎉 YOU WON!
+
+💰 Bet: $10.00
+💚 Hits: 3
+🔥 Multiplier: 4.35x
+💵 Won: $43.50
+
+Balance: $XXX.XX
+
+The exact wording should fit the existing Rollers Casino style.
+
+==================================================
+IMPORTANT GAME RULE DESIGN
+==================================================
+
+Do not guess what "Classic", "Easy", "Medium", and "Hard" mathematically mean.
+
+Create a clean difficulty configuration where the following initial values are respected:
+
+Easy:
+Base multiplier 1.10x
+
+Medium:
+Base multiplier 1.60x
+
+Hard:
+Base multiplier 4.00x
+
+Classic:
+Base multiplier 3.00x
+
+Then design the probability/payout calculation around those configurable parameters.
+
+If the existing Mines game already has difficulty definitions, inspect them first and make Number Rush consistent with them.
+
+If an exact mathematical interpretation is required for one of the modes, implement it as configuration rather than hardcoding assumptions throughout the game.
+
+==================================================
+MULTIPLAYER
+==================================================
+
+IMPORTANT:
+
+Up to 40 PLAYERS may use the game at the same time.
+
+Each player must have an independent:
+
+- Game session
+- Selected numbers
+- Difficulty
+- Bet amount
+- Outcome
+- Reveal state
+- Hit count
+- Multiplier
+- Payout
+- Balance transaction
+
+Player A must NEVER see or modify Player B's selection.
+
+Use:
+
+user_id + game_session_id
+
+or an equivalent unique session identifier.
+
+Do not store active selections in one global variable.
+
+Do not use shared global state for individual players.
+
+==================================================
+CALLBACK SECURITY
+==================================================
+
+Every button callback must be validated.
+
+A callback must verify:
+
+- Correct user.
+- Correct game session.
+- Correct game state.
+- Button is still valid.
+- Bet has not already been placed.
+- Game has not already finished.
+
+If an old callback is pressed after the game has finished:
+
+Return:
+
+"⚠️ This game has already ended."
+
+Do not modify balance.
+
+Prevent:
+- Double Bet.
+- Double payout.
+- Replaying old buttons.
+- Changing numbers after Bet.
+- Calling another user's game callbacks.
+- Negative bets.
+- Invalid number selections.
+- Balance race conditions.
+
+Use atomic database operations/transactions where necessary.
+
+==================================================
+DATABASE / GAME STATE
+==================================================
+
+Use the project's existing database.
+
+If a game table/model already exists, extend it if appropriate.
+
+Otherwise create a clean Number Rush game/session model.
+
+Store at minimum:
+
+game_id
+user_id
+difficulty
+bet_amount
+selected_numbers
+outcome_numbers
+revealed_numbers
+hit_numbers
+current_multiplier
+status
+potential_win
+final_payout
+created_at
+started_at
+finished_at
+balance_transaction_id
+
+Do not store sensitive information unnecessarily.
+
+==================================================
+BALANCE SAFETY
+==================================================
+
+Balance operations must be atomic.
+
+When the user places a bet:
+
+BEGIN TRANSACTION
+
+Check balance.
+
+Deduct bet exactly once.
+
+Create game session.
+
+COMMIT
+
+If anything fails:
+
+ROLLBACK.
+
+When paying a win:
+
+BEGIN TRANSACTION
+
+Verify game has not already been paid.
+
+Calculate final payout.
+
+Credit payout exactly once.
+
+Mark game as paid/finished.
+
+COMMIT.
+
+A duplicated Telegram callback must never duplicate a payout.
+
+==================================================
+ADMIN CONFIGURATION
+==================================================
+
+If the casino already has an admin/config system, integrate Number Rush into it.
+
+Allow configuration of:
+
+Easy base multiplier
+Medium base multiplier
+Hard base multiplier
+Classic base multiplier
+
+House edge
+
+Minimum bet
+
+Maximum bet
+
+Maximum selected numbers
+
+Reveal speed
+
+Difficulty settings
+
+Payout parameters
+
+Do not require editing multiple Python files to change these values.
+
+==================================================
+TELEGRAM UI
+==================================================
+
+Keep the UI visually similar to the screenshots:
+
+Dark casino-style interface.
+
+Large number grid.
+
+Blue selected numbers.
+
+Red revealed numbers.
+
+Green successful/hit numbers.
+
+Bet button.
+
+Difficulty selector.
+
+Bet amount controls.
+
+Status information.
+
+Do not use a Mini App.
+
+Do not use HTML.
+
+Do not use JavaScript frontend.
+
+Everything must be native Telegram bot UI.
+
+==================================================
+NAVIGATION
+==================================================
+
+Add Number Rush to the existing casino menu.
+
+Use existing menu/button conventions.
+
+Add:
+
+🎯 Number Rush
+
+When opened:
+
+🎯 NUMBER RUSH
+
+Choose difficulty:
+
+Classic
+Easy
+Medium
+Hard
+
+Then open the number grid.
+
+Add:
+
+⬅️ Back
+
+and make sure Back works correctly.
+
+Back must cancel an unstarted game safely.
+
+If a bet has already been placed, do NOT allow Back to cancel the game and recover the bet unless the existing casino architecture explicitly supports that behavior.
+
+==================================================
+RANDOM PICK
+==================================================
+
+Add:
+
+🎲 Random Pick
+
+When pressed:
+
+Automatically select a valid number of random numbers within the allowed 1–10 range.
+
+Make sure it never selects duplicates.
+
+Turn selected numbers blue.
+
+Do not automatically place the bet.
+
+The user still needs to press Bet.
+
+==================================================
+CLEAR TABLE
+==================================================
+
+Add:
+
+🗑 Clear Table
+
+This removes all currently selected numbers before the bet.
+
+It must not work after Bet.
+
+==================================================
+ERROR HANDLING
+==================================================
+
+Handle:
+
+Insufficient balance.
+
+Invalid bet.
+
+Too many selected numbers.
+
+No selected numbers.
+
+Game already running.
+
+Duplicate callback.
+
+Expired game.
+
+Database error.
+
+Telegram API error.
+
+Unexpected server error.
+
+Never expose stack traces to players.
+
+Log technical errors internally.
+
+==================================================
+CRASH RECOVERY
+==================================================
+
+The game must survive bot restarts as safely as possible.
+
+If a game was active when the bot restarted:
+
+Load active game sessions from the database.
+
+Do not generate a new outcome.
+
+Continue from the stored outcome/reveal state or safely mark the game according to the configured recovery policy.
+
+Never lose a user's bet because of a simple bot restart.
+
+==================================================
+PERFORMANCE
+==================================================
+
+The bot may have up to 40 simultaneous players.
+
+Do not block the main Telegram event loop.
+
+Use asynchronous operations where the existing bot architecture uses async.
+
+Do not use unnecessary sleep/blocking calls.
+
+If reveal delays are required, use asynchronous tasks.
+
+Prevent runaway background tasks.
+
+Cancel finished game tasks.
+
+==================================================
+TESTING
+==================================================
+
+Before considering the feature finished, test:
+
+1. One player selecting one number.
+2. One player selecting ten numbers.
+3. Player selecting/unselecting numbers.
+4. Random Pick.
+5. Clear Table.
+6. Bet with no selection.
+7. Bet with insufficient balance.
+8. Successful bet.
+9. Duplicate Bet callback.
+10. Two simultaneous players.
+11. At least 10 simultaneous players.
+12. Simulate 40 simultaneous players.
+13. Different difficulties.
+14. Different bet amounts.
+15. Winning result.
+16. Losing result.
+17. Multiple hits.
+18. Old callback after game finished.
+19. Bot restart during an active game.
+20. Database failure.
+21. Telegram API failure.
+22. Balance race condition.
+23. Duplicate payout attempt.
+24. Maximum selection of 10.
+25. Attempt to select an 11th number.
+26. Attempt to change selection after Bet.
+
+Also run the project's existing tests and do not break existing casino games.
+
+==================================================
+AUDIT THE MULTIPLIER
+==================================================
+
+Create tests that verify:
+
+- Multiplier is deterministic for the same game state/configuration.
+- Payout equals bet × multiplier.
+- House edge is applied correctly.
+- Impossible outcomes cannot produce payouts.
+- Multipliers do not become negative.
+- Payout cannot exceed configured limits if the casino has a max payout.
+- Changing difficulty actually changes the probability/payout profile.
+- The base multipliers are respected.
+- The RNG result cannot be altered after Bet.
+
+Add comments explaining the mathematical formula.
+
+Do NOT simply create a giant hardcoded multiplier list without understanding the probability.
+
+==================================================
+IMPORTANT FAIRNESS RULE
+==================================================
+
+The casino must NOT secretly manipulate outcomes based on:
+
+- User balance.
+- User identity.
+- Previous wins.
+- Previous losses.
+- Bet amount.
+- VIP status.
+- Number of previous games.
+
+The outcome should be determined according to the configured game probability/RNG system.
+
+The house edge should come from the mathematical payout model, not from secretly changing individual players' outcomes.
+
+==================================================
+CODE QUALITY
+==================================================
+
+Keep the implementation modular.
+
+Suggested structure if compatible with the existing project:
+
+number_rush/
+    game.py
+    config.py
+    payout.py
+    rng.py
+    handlers.py
+    keyboard.py
+    state.py
+
+But DO NOT create this exact structure if the existing project has a better architecture.
+
+Follow the project's existing coding style.
+
+Reuse existing utilities.
+
+Do not duplicate functions that already exist.
+
+Add type hints where the project uses them.
+
+Add logging.
+
+Use constants/configuration instead of magic numbers.
+
+==================================================
+DEPENDENCIES
+==================================================
+
+Do not add unnecessary dependencies.
+
+First inspect requirements.txt / pyproject.toml / existing dependency files.
+
+Only add a package if genuinely required.
+
+If the Telegram library needs an update for supported button styles, update it carefully and verify that existing bot functionality still works.
+
+Do not remove existing dependencies.
+
+==================================================
+FINAL INTEGRATION
+==================================================
+
+After implementation:
+
+1. Run syntax checks.
+2. Run tests.
+3. Start the bot locally in the Replit environment.
+4. Verify imports.
+5. Verify database initialization/migrations.
+6. Verify Telegram handlers register correctly.
+7. Verify existing casino games still work.
+8. Verify Number Rush can be opened from the casino menu.
+9. Verify native Telegram buttons work.
+10. Verify balance deduction.
+11. Verify payout.
+12. Verify multiplier.
+13. Verify simultaneous players.
+14. Verify restart recovery.
+
+Do NOT tell me "it's finished" until you have actually inspected the existing project and tested the implementation.
+
+If something in the existing code conflicts with this specification, DO NOT blindly overwrite it.
+
+Explain the conflict internally through code comments/logs and integrate with the existing architecture safely.
+
+MOST IMPORTANT:
+Build this as a REAL part of my existing Rollers Casino Telegram bot, not as a demonstration or prototype.
+
+Do not create fake balance values.
+Do not create fake payouts.
+Do not create client-side RNG.
+Do not create a web interface.
+Do not use placeholder functions for wallet/balance/RNG if those systems already exist.
+
+Inspect first → design integration → implement → test → fix errors → run the bot.

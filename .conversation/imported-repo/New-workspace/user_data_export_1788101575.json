@@ -1,0 +1,20 @@
+{
+  "timestamp": 1788101575.808465,
+  "export_date": "Sun Aug 30 14:52:55 2026",
+  "total_users": 0,
+  "user_balances": {},
+  "user_profiles": {},
+  "user_levels": {},
+  "user_wagering_totals": {},
+  "user_match_history": {},
+  "referral_data": {},
+  "referral_earnings": {},
+  "user_raffle_tickets": {},
+  "pending_deposits": {},
+  "pending_withdrawals": {},
+  "active_games": {},
+  "hilo_games": {},
+  "crypto_house_balances": {
+    "USDT": 1200.0
+  }
+}
