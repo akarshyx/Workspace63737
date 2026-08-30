@@ -1,9 +1,9 @@
 {
-  "timestamp": 1788109654.4504952,
-  "export_date": "Sun Aug 30 17:07:34 2026",
+  "timestamp": 1788110405.8304539,
+  "export_date": "Sun Aug 30 17:20:05 2026",
   "total_users": 1,
   "user_balances": {
-    "8598790977": 578.0
+    "8598790977": 568.0
   },
   "user_profiles": {
     "8598790977": {
@@ -11,17 +11,17 @@
       "username": "arshxy",
       "first_name": "#1",
       "currency": "USD",
-      "lt_games": 6,
+      "lt_games": 7,
       "lt_wins": 0,
       "lt_won": 0.0,
-      "lt_wagered": 110.0,
+      "lt_wagered": 120.0,
       "lt_first_game_ts": 1788104270,
-      "lt_last_game_ts": 1788109506
+      "lt_last_game_ts": 1788110085
     }
   },
   "user_levels": {},
   "user_wagering_totals": {
-    "8598790977": 110.0
+    "8598790977": 120.0
   },
   "user_match_history": {
     "8598790977": [
@@ -78,6 +78,15 @@
         "result": "medium_2_of_10",
         "winnings": 0.0,
         "profit": -20.0
+      },
+      {
+        "timestamp": 1788110085,
+        "id": "85031",
+        "game": "keno",
+        "bet": 10.0,
+        "result": "classic_3_of_10",
+        "winnings": 0.0,
+        "profit": -10.0
       }
     ]
   },
@@ -89,6 +98,6 @@
   "active_games": {},
   "hilo_games": {},
   "crypto_house_balances": {
-    "USDT": 1288.0
+    "USDT": 1298.0
   }
 }
