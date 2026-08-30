@@ -1,2 +1,3 @@
 - [Persistent project handoff](persistent-project-handoff.md) — after moving a conversation into a project, restore the preserved tree before rebuilding workflows.
 - [Keno payout policy](keno-payout-policy.md) — keep draws random; create house profit through published RTP and payout caps, never forced individual losses.
+- [Keno Telegram reveal UX](keno-telegram-reveal-ux.md) — use real Telegram button styles, reveal markup sequentially, then send settlement separately; expire stale setup boards.
